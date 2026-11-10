@@ -106,6 +106,21 @@ func (p *Plugin) Playlist(id string) (*music.Playlist, error) {
 	return &pl, nil
 }
 
+// PlaylistPage asks the plugin for one page of a playlist. A plugin that does
+// not answer pages leaves the request to Playlist, which answers it whole.
+func (p *Plugin) PlaylistPage(id string, offset, limit int) (*music.Playlist, error) {
+	var pl music.Playlist
+	params := map[string]any{"id": id, "offset": offset, "limit": limit}
+	if err := p.call("playlist", params, &pl); err != nil {
+		if err == music.ErrUnsupported || offset == 0 {
+			return p.Playlist(id)
+		}
+		return nil, err
+	}
+	p.stamp(pl.Tracks)
+	return &pl, nil
+}
+
 func (p *Plugin) Album(id string) (*music.AlbumPage, error) {
 	var a music.AlbumPage
 	if err := p.call("album", map[string]string{"id": id}, &a); err != nil {

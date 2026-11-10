@@ -62,43 +62,44 @@ type fakeSource struct {
 	caps map[string]bool
 	vals map[string]string
 
-	signIn      func() (*music.Account, error)
-	signOut     func() error
-	account     func() (*music.Account, error)
-	search      func(query string, kind music.SearchKind, offset int) (*music.SearchResult, error)
-	suggest     func(query string) ([]string, error)
-	playlists   func() ([]music.Playlist, error)
-	playlist    func(id string) (*music.Playlist, error)
-	album       func(id string) (*music.AlbumPage, error)
-	artist      func(id string) (*music.ArtistPage, error)
-	liked       func(offset int) (*music.Page, error)
-	recent      func() ([]music.Track, error)
-	home        func() (*music.Browse, error)
-	browse      func(page string) (*music.Browse, error)
-	isLiked     func(ids []string) (map[string]bool, error)
-	like        func(id string, on bool) error
-	likeEpisode func(id string, on bool) error
-	create      func(name string) (*music.Playlist, error)
-	rename      func(id, name string) error
-	remove      func(id string) error
-	addTo       func(id string, tracks []string) error
-	removeFrom  func(id string, tracks []string) error
-	move        func(id string, from, to int) error
-	save        func(id string, on bool) error
-	follow      func(id string, on bool) error
-	saveAlbum   func(id string, on bool) error
-	savedAlbums func(offset int) (*music.AlbumList, error)
-	shows       func() ([]music.Show, error)
-	show        func(id string, offset int) (*music.ShowPage, error)
-	subscribe   func(id string, on bool) error
-	stations    func() ([]music.Station, error)
-	stationNext func(id string) ([]music.Track, error)
-	comments    func(track string, offset int) (*music.CommentPage, error)
-	likeComment func(track, comment string, on bool) error
-	postComment func(track, text string) (*music.Comment, error)
-	lyrics      func(id string) (*music.Lyrics, error)
-	stream      func(id, quality string) (*music.Stream, error)
-	setSetting  func(key, value string) error
+	signIn       func() (*music.Account, error)
+	signOut      func() error
+	account      func() (*music.Account, error)
+	search       func(query string, kind music.SearchKind, offset int) (*music.SearchResult, error)
+	suggest      func(query string) ([]string, error)
+	playlists    func() ([]music.Playlist, error)
+	playlist     func(id string) (*music.Playlist, error)
+	playlistPage func(id string, offset, limit int) (*music.Playlist, error)
+	album        func(id string) (*music.AlbumPage, error)
+	artist       func(id string) (*music.ArtistPage, error)
+	liked        func(offset int) (*music.Page, error)
+	recent       func() ([]music.Track, error)
+	home         func() (*music.Browse, error)
+	browse       func(page string) (*music.Browse, error)
+	isLiked      func(ids []string) (map[string]bool, error)
+	like         func(id string, on bool) error
+	likeEpisode  func(id string, on bool) error
+	create       func(name string) (*music.Playlist, error)
+	rename       func(id, name string) error
+	remove       func(id string) error
+	addTo        func(id string, tracks []string) error
+	removeFrom   func(id string, tracks []string) error
+	move         func(id string, from, to int) error
+	save         func(id string, on bool) error
+	follow       func(id string, on bool) error
+	saveAlbum    func(id string, on bool) error
+	savedAlbums  func(offset int) (*music.AlbumList, error)
+	shows        func() ([]music.Show, error)
+	show         func(id string, offset int) (*music.ShowPage, error)
+	subscribe    func(id string, on bool) error
+	stations     func() ([]music.Station, error)
+	stationNext  func(id string) ([]music.Track, error)
+	comments     func(track string, offset int) (*music.CommentPage, error)
+	likeComment  func(track, comment string, on bool) error
+	postComment  func(track, text string) (*music.Comment, error)
+	lyrics       func(id string) (*music.Lyrics, error)
+	stream       func(id, quality string) (*music.Stream, error)
+	setSetting   func(key, value string) error
 }
 
 func newFakeSource(id string) *fakeSource {
@@ -164,6 +165,15 @@ func (s *fakeSource) Playlist(id string) (*music.Playlist, error) {
 	}
 	return s.playlist(id)
 }
+
+// PlaylistPage is only there when the test says the source pages playlists.
+func (s *fakeSource) PlaylistPage(id string, offset, limit int) (*music.Playlist, error) {
+	if s.playlistPage == nil {
+		return s.Playlist(id)
+	}
+	return s.playlistPage(id, offset, limit)
+}
+
 func (s *fakeSource) Album(id string) (*music.AlbumPage, error) {
 	if s.album == nil {
 		return nil, music.ErrUnsupported

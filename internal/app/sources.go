@@ -86,6 +86,7 @@ type library struct {
 	homeAt      time.Time // when what the home page shows was asked for
 
 	playlists map[string]*music.Playlist
+	plPaged   map[string]*paged // the playlists loaded a page at a time
 	loadingPl map[string]bool
 	plAt      map[string]time.Time // when each playlist loaded was asked for
 	freshPl   map[string]bool      // the loaded playlists being asked for anew
@@ -120,6 +121,7 @@ func newLibrary(src music.Source) *library {
 // forget drops what was loaded of the source, whose answers may have changed.
 func (l *library) forget() {
 	l.playlists = map[string]*music.Playlist{}
+	l.plPaged = map[string]*paged{}
 	l.loadingPl = map[string]bool{}
 	l.plAt = map[string]time.Time{}
 	l.freshPl = map[string]bool{}

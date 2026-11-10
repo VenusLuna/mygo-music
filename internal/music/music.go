@@ -71,6 +71,7 @@ type Playlist struct {
 	Mine        bool    `json:"mine,omitempty"`  // the listener's own
 	Saved       bool    `json:"saved,omitempty"` // saved from someone else
 	Fixed       bool    `json:"fixed,omitempty"` // the listener's, but kept by the source: liked songs, say
+	More        bool    `json:"more,omitempty"`  // there are more songs than this page
 	Tracks      []Track `json:"tracks,omitempty"`
 }
 
@@ -469,4 +470,10 @@ type Source interface {
 	RemoteState() (*RemoteState, error)
 	RemoteDevices() ([]Device, error)
 	RemoteUse(deviceID string) error
+}
+
+// PagedSource is a Source whose playlists are longer than one answer should
+// carry: it answers a page at a time, and Playlist still answers the first one.
+type PagedSource interface {
+	PlaylistPage(id string, offset, limit int) (*Playlist, error)
 }

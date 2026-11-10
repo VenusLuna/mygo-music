@@ -147,6 +147,45 @@ func TestSearchLoadsMore(t *testing.T) {
 	}
 }
 
+// A playlist longer than one page loads the next as its foot comes into view,
+// appending it rather than replacing what is shown.
+func TestPlaylistLoadsMore(t *testing.T) {
+	a := newTestApp()
+	asked := make(chan [3]any, 8)
+	src := fake(a)
+	src.playlistPage = func(id string, offset, limit int) (*music.Playlist, error) {
+		asked <- [3]any{id, offset, limit}
+		if offset == 0 {
+			return &music.Playlist{ID: id, Name: "长歌单", TrackCount: 3, More: true,
+				Tracks: []music.Track{song("1", "一"), song("2", "二")}}, nil
+		}
+		return &music.Playlist{ID: id, Name: "长歌单", TrackCount: 3,
+			Tracks: []music.Track{song("3", "三")}}, nil
+	}
+	ch := posts(a)
+	a.open(route{page: pagePlaylist, src: "fake", id: "10"})
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if got := wait(t, asked, "the first page"); got != [3]any{"10", 0, 200} {
+		t.Fatalf("asked for %v", got)
+	}
+	until(t, ch, func() bool { return a.playlists["10"] != nil })
+	tt.Frame()
+	if got := len(a.playlists["10"].Tracks); got != 2 {
+		t.Fatalf("first page has %d songs", got)
+	}
+	if got := wait(t, asked, "the second page"); got != [3]any{"10", 2, 200} {
+		t.Fatalf("asked for %v", got)
+	}
+	until(t, ch, func() bool { return len(a.playlists["10"].Tracks) == 3 })
+	if ids := []string{a.playlists["10"].Tracks[0].ID, a.playlists["10"].Tracks[1].ID, a.playlists["10"].Tracks[2].ID}; !slices.Equal(ids, []string{"1", "2", "3"}) {
+		t.Errorf("songs %v", ids)
+	}
+	if a.playlists["10"].More {
+		t.Error("still says there are more")
+	}
+}
+
 // A search before, from the empty field's popup, searches again, clicked
 // or chosen with the arrows; it was lost when its option was keyed anew.
 func TestSearchHistoryChoice(t *testing.T) {

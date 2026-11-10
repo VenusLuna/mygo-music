@@ -81,6 +81,7 @@ var zhCN = map[string]string{
 	"Couldn't load this artist":                              "歌手加载失败",
 	"Couldn't load this page":                                "页面加载失败",
 	"Couldn't load this playlist":                            "歌单加载失败",
+	"Couldn't load more songs":                               "更多歌曲加载失败",
 	"Couldn't load this podcast":                             "播客加载失败",
 	"Couldn't load your albums":                              "专辑加载失败",
 	"Couldn't load your liked songs":                         "喜欢的音乐加载失败",

@@ -270,7 +270,19 @@ func (a *app) playlistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, true, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	a.trackRows(c, pl.Tracks, true, func(c *ui.Context) { a.playlistHeader(c, pl) })
+	foot := func(c *ui.Context) {}
+	if pl.More {
+		pg := a.plPaged[id]
+		if pg == nil {
+			pg = &paged{loaded: true, more: true}
+			a.plPaged[id] = pg
+		}
+		pg.more = true
+		foot = func(c *ui.Context) {
+			a.pageFoot(c, pg, func() { a.loadPlaylistPage(a.library, id) })
+		}
+	}
+	a.trackRows(c, pl.Tracks, true, func(c *ui.Context) { a.playlistHeader(c, pl) }, foot)
 }
 
 func (a *app) playlistHeader(c *ui.Context, pl *music.Playlist) {
@@ -286,7 +298,11 @@ func (a *app) playlistHeader(c *ui.Context, pl *music.Playlist) {
 			if pl.Owner != "" {
 				meta = append(meta, pl.Owner)
 			}
-			meta = append(meta, i18n.Songs(len(pl.Tracks)))
+			count := len(pl.Tracks)
+			if pl.TrackCount > count {
+				count = pl.TrackCount
+			}
+			meta = append(meta, i18n.Songs(count))
 			ui.Text(c, strings.Join(meta, " · ")).FontSize(13).TextColor(p.muted)
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)

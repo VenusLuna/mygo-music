@@ -513,7 +513,7 @@ func (a *app) loadPlaylist(lib *library, id string, thenPlay bool) {
 	delete(lib.plErr, id)
 	at := time.Now()
 	go func() {
-		pl, err := answered(lib.src.Playlist(id))
+		pl, err := answered(playlistFirst(lib.src, id))
 		a.post(func() {
 			delete(lib.loadingPl, id)
 			if err != nil {
@@ -521,9 +521,80 @@ func (a *app) loadPlaylist(lib *library, id string, thenPlay bool) {
 				return
 			}
 			lib.playlists[id], lib.plAt[id] = pl, at
+			if pl.More {
+				lib.plPaged[id] = &paged{loaded: true, more: true}
+			}
 			if thenPlay {
 				a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
 			}
+		})
+	}()
+}
+
+// playlistPageSize is how many songs one answer carries from a source that
+// pages playlists, small enough to show while the rest follows on scrolling.
+const playlistPageSize = 200
+
+// playlistFirst asks for a playlist's first page, from a source that pages
+// playlists, or for the whole of it from one that does not.
+func playlistFirst(src music.Source, id string) (*music.Playlist, error) {
+	if byPage, ok := src.(music.PagedSource); ok {
+		return byPage.PlaylistPage(id, 0, playlistPageSize)
+	}
+	return src.Playlist(id)
+}
+
+// loadPlaylistPage appends the next page of a playlist, once the end of what is
+// shown comes into view.
+func (a *app) loadPlaylistPage(lib *library, id string) {
+	pl := lib.playlists[id]
+	if pl == nil || lib.loadingPl[id] || !pl.More {
+		return
+	}
+	byPage, ok := lib.src.(music.PagedSource)
+	if !ok {
+		return
+	}
+	pg := lib.plPaged[id]
+	if pg == nil {
+		pg = &paged{loaded: true}
+		lib.plPaged[id] = pg
+	}
+	if pg.loading {
+		return
+	}
+	pg.loading, pg.err = true, ""
+	offset := len(pl.Tracks)
+	go func() {
+		next, err := answered(byPage.PlaylistPage(id, offset, playlistPageSize))
+		a.post(func() {
+			pg.loading = false
+			cur := lib.playlists[id]
+			if err != nil {
+				pg.err = a.problem(lib, err, T("Couldn't load more songs"))
+				return
+			}
+			if cur == nil || len(cur.Tracks) != offset {
+				// Loaded anew or forgotten meanwhile: what is there is newer.
+				return
+			}
+			seen := make(map[string]bool, len(cur.Tracks))
+			for i := range cur.Tracks {
+				seen[cur.Tracks[i].ID+"\x00"+cur.Tracks[i].Source] = true
+			}
+			for _, track := range next.Tracks {
+				key := track.ID + "\x00" + track.Source
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				cur.Tracks = append(cur.Tracks, track)
+			}
+			cur.More = next.More
+			if next.TrackCount > cur.TrackCount {
+				cur.TrackCount = next.TrackCount
+			}
+			pg.more = next.More
 		})
 	}()
 }
@@ -536,7 +607,7 @@ func (a *app) freshenPlaylist(lib *library, id string) {
 	lib.freshPl[id] = true
 	at := time.Now()
 	go func() {
-		pl, err := answered(lib.src.Playlist(id))
+		pl, err := answered(playlistFirst(lib.src, id))
 		a.post(func() {
 			delete(lib.freshPl, id)
 			// Changed in the app meanwhile, its songs or name, or forgotten:
